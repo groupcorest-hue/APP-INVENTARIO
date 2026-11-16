@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Inventario El Chinito</title>
+  <meta name="description" content="Sistema de Inventario de Sanguchería El Chinito">
+  <meta name="theme-color" content="#111111">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Chinito Inv.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="iconos/favicon-32.png">
+  <link rel="apple-touch-icon" href="iconos/apple-touch-icon.png">
+  <script src="config.js"></script>
+  <style>
+    *{ box-sizing:border-box; }
+    html,body{ margin:0; height:100%; background:#111; color:#fff; font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif; overflow:hidden; }
+    #sistema{ position:fixed; top:env(safe-area-inset-top); left:0; right:0; bottom:0; width:100%; height:calc(100% - env(safe-area-inset-top)); border:0; background:#F5F5F3; display:block; }
+    .capa{ position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:28px; text-align:center; background:#111; z-index:10; transition:opacity .35s; }
+    .capa.oculta{ opacity:0; pointer-events:none; }
+    .capa img{ width:132px; height:132px; border-radius:30px; box-shadow:0 0 0 4px rgba(244,147,30,.35), 0 12px 40px rgba(0,0,0,.5); }
+    .t1{ color:#F4931E; font-weight:800; letter-spacing:.08em; font-size:15px; }
+    .t2{ color:#9a9a9a; font-size:13px; line-height:1.5; max-width:320px; }
+    .spinner{ width:34px; height:34px; border:3px solid #333; border-top-color:#F4931E; border-radius:50%; animation:g .8s linear infinite; }
+    @keyframes g{ to{ transform:rotate(360deg); } }
+    .btn{ border:0; border-radius:12px; height:46px; padding:0 20px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; width:100%; max-width:300px; }
+    .btn-p{ background:#F4931E; color:#fff; }
+    .btn-s{ background:#2a2a2a; color:#fff; }
+    input{ width:100%; max-width:320px; height:46px; border-radius:12px; border:1px solid #444; background:#1c1c1c; color:#fff; padding:0 14px; font-size:14px; }
+    .oculto{ display:none !important; }
+    /* Aviso de instalación (cuando se abre desde el navegador) */
+    #aviso-instalar{ position:fixed; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom)); z-index:20; background:#111; color:#fff; border-radius:16px;
+      padding:12px 12px 12px 14px; display:flex; align-items:center; gap:12px; box-shadow:0 10px 40px rgba(0,0,0,.45); border:1px solid #2a2a2a; }
+    #aviso-instalar img{ width:42px; height:42px; border-radius:10px; flex:none; }
+    #aviso-instalar .txt{ flex:1; font-size:13px; line-height:1.35; }
+    #aviso-instalar .txt b{ color:#F4931E; }
+    #aviso-instalar button{ border:0; border-radius:10px; font-weight:700; font-family:inherit; cursor:pointer; }
+    #btn-instalar{ background:#F4931E; color:#fff; height:38px; padding:0 14px; font-size:13px; }
+    #btn-cerrar-aviso{ background:transparent; color:#888; font-size:20px; width:30px; height:30px; }
+  </style>
+</head>
+<body>
+  <iframe id="sistema" title="Sistema de Inventario El Chinito" allow="clipboard-write; fullscreen" referrerpolicy="no-referrer-when-downgrade"></iframe>
+
+  <!-- Pantalla de carga -->
+  <div class="capa" id="capa-carga">
+    <img src="iconos/logo-splash.png" alt="El Chinito">
+    <div class="t1">INVENTARIO EL CHINITO</div>
+    <div class="spinner"></div>
+    <div class="t2" id="txt-carga">Conectando con el sistema...</div>
+  </div>
+
+  <!-- Problema al cargar / sin internet -->
+  <div class="capa oculta oculto" id="capa-error">
+    <img src="iconos/logo-splash.png" alt="El Chinito">
+    <div class="t1" id="err-titulo">NO SE PUDO ABRIR EL SISTEMA</div>
+    <div class="t2" id="err-texto">Revisa tu conexión a internet e inténtalo de nuevo.</div>
+    <button class="btn btn-p" onclick="cargarSistema()">Reintentar</button>
+    <button class="btn btn-s" id="btn-navegador" onclick="abrirEnNavegador()">Abrir en el navegador</button>
+  </div>
+
+  <!-- Configuración inicial (solo si aún no se puso la URL en config.js) -->
+  <div class="capa oculta oculto" id="capa-config">
+    <img src="iconos/logo-splash.png" alt="El Chinito">
+    <div class="t1">CONFIGURAR LA APP</div>
+    <div class="t2">Pega la URL de la aplicación web del sistema (termina en <b>/exec</b>). Solo se pide una vez en este celular.</div>
+    <input id="inp-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+    <button class="btn btn-p" onclick="guardarUrl()">Guardar y abrir</button>
+  </div>
+
+  <!-- Aviso para instalar la app -->
+  <div id="aviso-instalar" class="oculto">
+    <img src="iconos/icono-192.png" alt="">
+    <div class="txt" id="aviso-txt"><b>Instala la app</b><br>Tendrás el ícono de El Chinito en tu celular.</div>
+    <button id="btn-instalar" class="oculto">Instalar</button>
+    <button id="btn-cerrar-aviso" aria-label="Cerrar">×</button>
+  </div>
+
+  <script>
+    var CFG = window.CHINITO_CONFIG || {};
+    var KEY_URL = 'chinito_app_url', KEY_AVISO = 'chinito_app_aviso_cerrado';
+    var iframe = document.getElementById('sistema');
+    var temporizador = null, listo = false, eventoInstalar = null;
+
+    function urlValida(u) { return /^https?:\/\/.+/i.test(String(u || '')) && !/PEGA_AQUI/i.test(u); }
+    function urlSistema() {
+      if (urlValida(CFG.URL_APP)) return CFG.URL_APP.trim();
+      try { var g = localStorage.getItem(KEY_URL); if (urlValida(g)) return g; } catch (e) {}
+      return '';
+    }
+    function mostrar(id) {
+      ['capa-carga', 'capa-error', 'capa-config'].forEach(function (c) {
+        var el = document.getElementById(c);
+        if (c === id) { el.classList.remove('oculto'); requestAnimationFrame(function () { el.classList.remove('oculta'); }); }
+        else { el.classList.add('oculta'); setTimeout(function () { if (el.classList.contains('oculta')) el.classList.add('oculto'); }, 360); }
+      });
+    }
+    function error(titulo, texto) {
+      document.getElementById('err-titulo').textContent = titulo;
+      document.getElementById('err-texto').textContent = texto;
+      document.getElementById('btn-navegador').style.display = urlSistema() ? '' : 'none';
+      mostrar('capa-error');
+    }
+
+    function cargarSistema() {
+      var url = urlSistema();
+      if (!url) { mostrar('capa-config'); return; }
+      if (!navigator.onLine) { error('SIN CONEXIÓN A INTERNET', 'El sistema necesita internet para mostrar el inventario actualizado. Conéctate y toca "Reintentar".'); return; }
+      listo = false;
+      document.getElementById('txt-carga').textContent = 'Conectando con el sistema...';
+      mostrar('capa-carga');
+      iframe.src = url;
+      clearTimeout(temporizador);
+      setTimeout(function () { if (!listo) document.getElementById('txt-carga').textContent = 'Cargando... la primera vez puede tardar unos segundos.'; }, 7000);
+      temporizador = setTimeout(function () {
+        if (!listo) error('EL SISTEMA ESTÁ TARDANDO', 'Puede ser una conexión lenta o que este celular no permita abrir el sistema dentro de la app (por ejemplo, si no hay una cuenta de Google iniciada). Puedes reintentar o abrirlo en el navegador.');
+      }, (Number(CFG.ESPERA_MAX_SEG) || 25) * 1000);
+    }
+
+    // El sistema avisa cuando terminó de cargar (ver Index.html del proyecto Apps Script).
+    window.addEventListener('message', function (ev) {
+      var d = ev.data;
+      if (d && d.chinito === 'listo') {
+        listo = true; clearTimeout(temporizador);
+        mostrar(null);
+      }
+    });
+
+    function abrirEnNavegador() { var u = urlSistema(); if (u) window.open(u, '_blank') || (location.href = u); }
+    function guardarUrl() {
+      var u = document.getElementById('inp-url').value.trim();
+      if (!urlValida(u)) { document.getElementById('inp-url').style.borderColor = '#D93B3F'; return; }
+      try { localStorage.setItem(KEY_URL, u); } catch (e) {}
+      cargarSistema();
+    }
+
+    window.addEventListener('online', function () { if (!listo) cargarSistema(); });
+    window.addEventListener('offline', function () { if (!listo) error('SIN CONEXIÓN A INTERNET', 'Conéctate a internet y toca "Reintentar".'); });
+
+    // ---------------- Instalación ----------------
+    var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    var esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    function avisoCerrado() { try { return localStorage.getItem(KEY_AVISO) === '1'; } catch (e) { return false; } }
+    function mostrarAviso(txt, conBoton) {
+      if (standalone || avisoCerrado()) return;
+      document.getElementById('aviso-txt').innerHTML = txt;
+      document.getElementById('btn-instalar').classList.toggle('oculto', !conBoton);
+      document.getElementById('aviso-instalar').classList.remove('oculto');
+    }
+    document.getElementById('btn-cerrar-aviso').onclick = function () {
+      document.getElementById('aviso-instalar').classList.add('oculto');
+      try { localStorage.setItem(KEY_AVISO, '1'); } catch (e) {}
+    };
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault(); eventoInstalar = e;
+      mostrarAviso('<b>Instala la app</b><br>Tendrás el ícono de El Chinito en tu celular.', true);
+    });
+    document.getElementById('btn-instalar').onclick = function () {
+      if (!eventoInstalar) return;
+      eventoInstalar.prompt();
+      eventoInstalar.userChoice.then(function () { eventoInstalar = null; document.getElementById('aviso-instalar').classList.add('oculto'); });
+    };
+    window.addEventListener('appinstalled', function () { document.getElementById('aviso-instalar').classList.add('oculto'); });
+    if (esIOS && !standalone) {
+      setTimeout(function () { mostrarAviso('<b>Instalar en iPhone:</b> toca <b>Compartir</b> (el cuadrado con flecha hacia arriba) y luego <b>"Agregar a pantalla de inicio"</b>.', false); }, 2500);
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+    }
+
+    cargarSistema();
+  </script>
+</body>
+</html>
